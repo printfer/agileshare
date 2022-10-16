@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="description" content="file sharing">
+        <link rel="stylesheet" href="style.css">
+        <link rel="icon" href="favicon.ico">
+        <title>Agileshare</title>
+        <script src="/socket.io/socket.io.js" defer></script>
+        <script src="https://unpkg.com/peerjs@1.2.0/dist/peerjs.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <script src="variables.js" defer></script>
+        <script src="crypto.js" defer></script>
+        <script src="network.js" defer></script>
+        <script src="passcode.js" defer></script>
+        <script src="drop.js" defer></script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="center">
+                <div id="display">
+                    <!--
+                        <div>
+                        <div id="qrcode"></div>
+                        </div>
+                        <br />
+                    -->
+                    <div>
+                        <span id="pincode_zone"></span>
+                        <span id="drop_zone">
+                            <div class="drop-zone center">
+                                <span class="drop-zone__prompt"> Drop file here or click to upload </span>
+                                <input type="file" name="myFile" class="drop-zone__input">
+                            </div>
+                        </span>
+                        <div class="pincode_zone_elements" style="margin: 0.3em 0;">
+                            Enter same pincode together with your peer
+                        </div>
+                        <div class="drop_zone_elements" style="margin: 0.3em 0;">
+                            <span id="drop_zone_display">Waiting for other peer(s) ...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pincode_zone_elements">
+                <div class="center">
+                    <a id="pincode_confirm"><button class="option">Confirm Passcode</button></a>
+                </div>
+                <div class="center">
+                    <a id=""><button class="option" disabled>Use QR Code <br /> (Coming soon) </button></a>
+                </div>
+            </div>
+            <div class="drop_zone_elements">
+                <div class="center">
+                    <a id="upload_confirm"><button class="option">Confirm Upload</button></a>
+                </div>
+                <div class="center">
+                    <a id="download_confirm"><button class="option">Download File</button></a>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

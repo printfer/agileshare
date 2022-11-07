@@ -1,7 +1,4 @@
-my_passcode = getRandomChar(PASSCODE_LENGTH); // Initialize passcode with a randomly generated 6 digits hex string (CSPRNG)
-getRoomId(my_passcode).then((roomId) => { // Initialize room id with passcode
-    my_room_id = roomId
-}); 
+const ECDH_CURVE = "P-521"; // Can be "P-256", "P-384", or "P-521"
 
 // String to ArrayBuffer
 function getMessageEncoding(message) {
@@ -11,7 +8,7 @@ function getMessageEncoding(message) {
 
 // ArrayBuffer to String
 function getMessageDecoding(message) {
-    let decoder = new TextDecoder(); // default 'utf-8' or 'utf8'
+    const decoder = new TextDecoder(); // default "utf-8" or "utf8"
     return decoder.decode(message);
 }
 
@@ -115,7 +112,7 @@ async function decrypt(encryptedData, key1, key2) {
     const iv = await crypto.subtle.exportKey("raw", ivEncode);
 
     try {
-        let decrypted = await window.crypto.subtle.decrypt(
+        const decrypted = await window.crypto.subtle.decrypt(
             {
                 "name": "AES-GCM",
                 "iv": iv
@@ -124,40 +121,27 @@ async function decrypt(encryptedData, key1, key2) {
             encryptedData
         );
 
-        let dec = new TextDecoder();
         return decrypted;
     } catch (e) {
-        console.error('Decryption error');
+        console.error("Decryption error");
     }
-}
-
-function getRandomChar(length) {
-    let result = '';
-    // Better alternative: const characters = '!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~';
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
-    const array = new Uint32Array(length);
-    window.crypto.getRandomValues(array);
-    for (const num of array) {
-        result += characters.charAt(num % characters.length);
-    }
-    return result;
 }
 
 // ArrayBuffer to Hex
 // buffer: ArrayBuffer
-function buf2hex(buffer) {
+function bufToHex(buffer) {
     return [...new Uint8Array(buffer)]
-        .map(x => x.toString(16).padStart(2, '0'))
-        .join('');
+        .map(x => x.toString(16).padStart(2, "0"))
+        .join("");
 }
 
 // Hex to ArrayBuffer
 // hex: hex string
-function hex2buf(hex) {
+function hexToBuf(hex) {
     let buffer = new ArrayBuffer(hex.length / 2);
     let array = new Uint8Array(buffer);
     let k = 0;
-    for (let i = 0; i < hex.length; i +=2 ) {
+    for (let i = 0; i < hex.length; i += 2 ) {
         array[k] = parseInt(hex[i] + hex[i+1], 16);
         k++;
     }
@@ -167,21 +151,22 @@ function hex2buf(hex) {
 // Get current time in minutes
 function getCurrentTime() {
     const today = new Date();
-    const date = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
-    const time = today.getHours() + ':' + today.getMinutes(); //  + ':' + today.getSeconds();
-    return date + ' ' + time;
+    const date = today.getFullYear() + "-" + (today.getMonth() + 1) + "-" + today.getDate();
+    const time = today.getHours() + ":" + today.getMinutes(); //  + ":" + today.getSeconds();
+    return date + " " + time;
 }
 
 async function getMessageHashing(message) {
     const msgUint8 = new TextEncoder().encode(message); // encode as (utf-8) Uint8Array
-    return crypto.subtle.digest('SHA-256', msgUint8); // hash the message
+    return crypto.subtle.digest("SHA-256", msgUint8); // hash the message
 }
 
 // Generate the room id for people with the same password and enter it at the same time.
 // password: str
 async function getRoomId(password) {
     const currentTime = getCurrentTime();
-    console.log('[Info] Current Time: ' + currentTime)
+    console.log(`[Info] Current Time: ${currentTime}`);
+
     const [keyMaterial, salt] = await Promise.all([
         getKeyMaterial(password),
         getMessageHashing(currentTime)
@@ -189,18 +174,30 @@ async function getRoomId(password) {
     const key = await getKey(keyMaterial, salt);
     const exportKey = await crypto.subtle.exportKey("raw", key);
 
-    console.log('[Info] Current Room ID: ' + buf2hex(exportKey));
-    return buf2hex(exportKey);
+    console.log(`[Info] Current Room ID: ${bufToHex(exportKey)}`);
+    return bufToHex(exportKey);
 }
 
-// Generate the room secret using passcode
+// Generate the room secret using password
 // password: str
-async function getRoomSecert(password, roomId) {
+async function getRoomSecret(password, roomId) {
     const keyMaterial = await getKeyMaterial(password);
     const salt = getMessageEncoding(roomId);
     const key = await getKey(keyMaterial, salt);
     const exportKey = await crypto.subtle.exportKey("raw", key);
 
-    console.log('[Info] Current Room Secert: ' + buf2hex(exportKey));
-    return buf2hex(exportKey);
+    console.log(`[Info] Current Room Secret: ${bufToHex(exportKey)}`);
+    return bufToHex(exportKey);
+}
+
+function getRandomChar(length) {
+    let result = "";
+    // Better alternative: const characters = "!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+    const array = new Uint32Array(length);
+    window.crypto.getRandomValues(array);
+    for (const num of array) {
+        result += characters.charAt(num % characters.length);
+    }
+    return result;
 }

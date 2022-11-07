@@ -1,3 +1,9 @@
+<p align="center"><img src="logo.svg"/></p>
+
+> Agileshare is a file-sharing program built with security in mind that is designed to improve the in-person cross-platform file-sharing experience. Agileshare's logo is inspired by put a folder open face down on the table.
+
+---
+
 # Agileshare
 
 [Agileshare](https://github.com/printfer/Agileshare) is a file-sharing program built with security in mind that is designed to improve the in-person cross-platform file-sharing experience.
@@ -31,6 +37,13 @@ Here are some of the key features and expected features:
 - [ ] WebSocket as a fallback when WebRTC is not available
 - [ ] Connect peer with QR code
 - [ ] Show file transfer progress
+- [ ] Handle multiple file transfer
+- [x] Auto-adjusted light/dark mode
+
+# Known issues
+
+- Modal pop-up notifications will malfunction for more than one peer
+- A new download will remove the previous one
 
 # Installation
 
@@ -54,8 +67,16 @@ If there is no error, you should be able to access it from [http://127.0.0.1:300
 
 Please check [package.json](package.json) for more details
 
+# Contributing
+
+Bug reports, feature suggestions, and especially code contributions are most welcome. Feel free to open an issue or pull request, and please check out the [`develop`](https://github.com/printfer/Agileshare/tree/develop) branch to catch up with the latest development.
+
 # License
+
+[![](https://www.gnu.org/graphics/gplv3-with-text-136x68.png)](https://www.gnu.org/licenses/gpl-3.0.html)
 
 Agileshare is released as free and open source software under the [GPLv3](LICENSE) license.
 
-Agileshare has been developed by [printfer](https://printfer.github.io/) with :heart:
+Agileshare and its logo have been designed and created by [Printfer](https://printfer.github.io/) with :heart:
+
+Copyright © 2022 [Printfer](https://github.com/printfer)

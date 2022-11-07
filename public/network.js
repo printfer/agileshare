@@ -1,178 +1,295 @@
-const PLUS_ONE = 1;
-const MINUS_ONE = -1;
-const peerList = {}; // List of DataConnection from PeerJS
-let peerListTotal = 0;
+class ConnectionList {
 
-function startConnection() {
-    roomId = my_room_id;
+    // Text Display
+    textDisplay = document.querySelector("#text-display");
 
-    // Initialize key pair
-    getKeyPair().then((keyPair) => {
-        my_keypair = keyPair; 
-    });
+    // Peer Status
+    isFirstPeer = true;
+    totalPeer = 0;
+    #peerList = {};
+    #keyPair;
 
-    // Socket.IO
-    const socket = io();
+    // File Status
+    #uploadCandidate;
 
-    // PeerJS
-    // Connect to peer server
-    const peer = new Peer(undefined, {
-        path: '/peerjs',
-        host: '/',
-        port: '3001'
-    });
+    // Signal
+    #TYPE_ASK_KEY = 0;
+    #TYPE_REPLY_KEY = 1;
+    #TYPE_FILE_TRANSFER = 2
+    #TYPE_FILE_TRANSFER_INIT = 3;
+    #TYPE_FILE_TRANSFER_COMPLETE = 4;
 
-    // Get peer id from the server
-    peer.on('open', (peerId) => {
-        console.log('[peerjs] My peer id: ' + peerId);
-        socket.emit('join-room', roomId, peerId);
-    })
+    #modalPopUp = new ModalPopUp();
+    #tool = new Tool();
 
-    // Get peer connect status from server
-    socket.on('peer-connected', (peerId) => {
-        console.log('[socket.io] Connected with peerId: ' + peerId);
-        //const conn = peer.connect(peerId, {metadata: {"id": "test"}});
-        const conn = peer.connect(peerId);
-        const infoObject = {connection: conn, secret: null};
-        peerList[peerId] = infoObject;
-        updatePeerListTotal(PLUS_ONE);
-        receiveDataFrom(conn);
-    })
+    //constructor() {
+    //}
 
-    // Get peer disconnect status from server
-    socket.on('peer-disconnected', (peerId) => {
-        console.log('[socket.io] Disconnected with peerId: ' + peerId);
-        peerList[peerId].connection.close();
-        delete peerList[peerId];
-        updatePeerListTotal(MINUS_ONE);
-    })
+    startConnection() {
+        // Update display UI
+        pass.hidePass();
+        drop.showDrop();
+        this.#updatePeerListStatus();
 
-    // Wait peer connection
-    peer.on('connection', (conn) => {
-        conn.on('open', () => {
-            // Receive messages
-            //console.log("[peerjs] Received metadataId: " + conn.metadata.id);
-            const peerId = conn.peer;
-            const infoObject = {connection: conn, secret: null};
-            peerList[peerId] = infoObject;
-            updatePeerListTotal(PLUS_ONE);
-            receiveDataFrom(conn);
+        // Initialize local generated ECDH key pair
+        getKeyPair().then((keyPair) => {
+            this.addKeyPair(keyPair);
         });
-    });
-}
 
-// Helper for data sending
-function sendMessageTo(peerId, message) { // peerId needs to already exist in the peerList
-    peerList[peerId].connection.send(message);
-}
-function sendMessageToAll(message) {
-    for (const peerId in peerList) {
-        sendMessageTo(peerId, message);
-    }
-}
-function sendKeyTo(peerId, keyType, publicKey) {
-    const keyObject = {
-        type: keyType,
-        keyString: publicKey
-    };
-    peerList[peerId].connection.send(keyObject);
-}
-function sendKeyToAll(publicKey) {
-    for (const peerId in peerList) {
-        sendKeyTo(peerId, TYPE_ASK_KEY, publicKey);
-    }
-}
-async function sendFileToAll() {
-    for (const peerId in peerList) {
-        sendMessageTo(peerId, INIT_FILE_TRANSFER);
+        // Socket.IO
+        const socket = io();
 
-        const sharedSecert = await getSecretKeyFromPair(my_keypair.privateKey, peerList[peerId].secret);
-        const sharedSecertBuffer = await crypto.subtle.exportKey("raw", sharedSecert);
-        const sharedSecertString = buf2hex(sharedSecertBuffer);
-        const sharedSecertString2 = await getMessageHashing(sharedSecertString);
+        // PeerJS
+        // Connect to peer server
+        const peer = new Peer(undefined, {
+            path: "/peerjs",
+            host: "/",
+            port: "3001"
+        });
 
-        const file = await my_upload_candidate.arrayBuffer();
+        // Get peer id from the server
+        peer.on("open", (peerId) => {
+            console.log(`[peerjs] My peer id: ${peerId}`);
+            socket.emit("join-room", passStatus.roomId, peerId);
+        })
 
-        const [encryptedFile, encryptedFilename] = await Promise.all([
-            encrypt(file, sharedSecertString, my_room_secret),
-            encrypt(getMessageEncoding(my_upload_candidate.name), sharedSecertString2, my_room_secret)
-        ]);
-        //const encryptedFile = await encrypt(file, sharedSecertString, my_room_secret);
-        //const encryptedFilename = await encrypt(getMessageEncoding(my_upload_candidate.name), sharedSecertString, my_room_secret);
-        peerList[peerId].connection.send({
-            type: "file",
-            file: encryptedFile,
-            filename: encryptedFilename
+        // Get peer connect status from server
+        socket.on("peer-connected", (peerId) => {
+            console.log(`[socket.io] Connected with peerId: ${peerId}`);
+            const conn = peer.connect(peerId);
+            this.addOnePeer(peerId, conn);
+        })
+
+        // Get peer disconnect status from server
+        socket.on("peer-disconnected", (peerId) => {
+            console.log(`[socket.io] Disconnected with peerId: ${peerId}`);
+            this.removeOnePeer(peerId);
+        })
+
+        // Wait peer connection
+        peer.on("connection", (conn) => {
+            conn.on("open", () => {
+                // Receive messages
+                const peerId = conn.peer;
+                this.addOnePeer(peerId, conn);
+            });
         });
     }
-}
 
-// Helper for data receiving 
-async function receiveDataFrom(conn) {
-    conn.on('data', async (data) => {
-        const peerId = conn.peer;
-        if (typeof data === "number") {
-            switch (data) {
-                case INIT_FILE_TRANSFER:
-                    download_confirm.firstChild.innerHTML = '<i class="fa-solid fa-spinner fa-spin-pulse"></i> Loading ...';
-                    break;
-                default:
-            }
-        } else if (typeof data  === "string") {
-            console.log('[peerjs] Received message: ', data);
-        } else if (typeof data  === "object") {
-            if (data.type === "file") {
-                const sharedSecert = await getSecretKeyFromPair(my_keypair.privateKey, peerList[peerId].secret);
-                const sharedSecertBuffer = await crypto.subtle.exportKey("raw", sharedSecert);
-                const sharedSecertString = buf2hex(sharedSecertBuffer);
-                const sharedSecertString2 = await getMessageHashing(sharedSecertString);
-                //console.log('Shared Secert: ' + sharedSecertString));
+    addKeyPair(keyPair) {
+        this.#keyPair = keyPair;
+    }
 
-                const [fileBuffer, filename] = await Promise.all([
-                    decrypt(data.file, sharedSecertString, my_room_secret),
-                    decrypt(data.filename, sharedSecertString2, my_room_secret)
-                ]);
+    removeOnePeer(id) {
+        this.totalPeer -= 1;
+        this.#peerList[id].connection.close();
+        delete this.#peerList[id];
+        this.#updatePeerListStatus();
+    }
 
-                const file = new Blob([fileBuffer]);
-                const filenameString = getMessageDecoding(filename)
-                download_confirm.href = URL.createObjectURL(file)
-                download_confirm.download = filenameString;
-                //download_confirm.click(); // Auto download
-                download_confirm.firstChild.textContent = "Download File";
-                download_confirm.firstChild.title = "Click to download: " + filenameString;
-                download_confirm.firstChild.disabled = false;
-            } else if (data.type === TYPE_ASK_KEY) {
-                console.log("[peerjs] Received key from " + conn.peer + ": " + data.keyString);
-                const peerPublicKey = await getPublicKeyFrom(hex2buf(data.keyString));
-                peerList[conn.peer].secret = peerPublicKey;
-                const publicKeyBuffer = await crypto.subtle.exportKey("raw", my_keypair.publicKey)
-                sendKeyTo(conn.peer, TYPE_REPLY_KEY, buf2hex(publicKeyBuffer));
-            } else if (data.type === TYPE_REPLY_KEY) {
-                const peerPublicKey = await getPublicKeyFrom(hex2buf(data.keyString));
-                peerList[conn.peer].secret = peerPublicKey;
-                upload_confirm.firstChild.disabled = false;
-            }
+    addOnePeer(id, conn) {
+        this.totalPeer +=1;
+        this.#peerList[id] = {
+            connection: conn,
+            secret: null 
+        };
+        this.#receiveFromPeer(id);
+        this.#updatePeerListStatus();
+    }
+
+    // Helper for data sending
+    #sendMessageTo(peerId, message) { // peerId needs to already exist in the peerList
+        this.#peerList[peerId].connection.send(message);
+    }
+    #sendMessageToAll(message) {
+        for (const peerId in this.#peerList) {
+            this.#sendMessageTo(peerId, message);
         }
-    });
-}
+    }
+    async #sendFileToAll() {
+        for (const peerId in this.#peerList) {
+            // File transfer init notification
+            this.#sendMessageTo(peerId, {type: this.#TYPE_FILE_TRANSFER_INIT});
 
-function sendPublicKey() {
-    crypto.subtle.exportKey("raw", my_keypair.publicKey).then((publicKeyBuffer) => {
-        sendKeyToAll(buf2hex(publicKeyBuffer))
-    });
-}
+            // File transfer notification
+            this.#modalPopUp.updateInfo({
+                createContext: [{
+                    innerHTML: "<i class=\"fa-solid fa-spinner fa-spin-pulse\"></i> Loading ..."
+                }]
+            });
 
-function updatePeerListTotal(number) {
-    peerListTotal += number;
-    //console.log(peerListTotal);
-    switch (peerListTotal) {
-        case 0:
-            drop_zone_display.textContent = 'No peer in the room! Refresh the page to start.'
-            break;
-        case 1:
-            drop_zone_display.textContent = peerListTotal + ' peer currently in the room'
-            break;
-        default:
-            drop_zone_display.textContent = peerListTotal + ' peers currently in the room'
+            // File encryption
+            const sharedSecret = await getSecretKeyFromPair(this.#keyPair.privateKey, this.#peerList[peerId].secret);
+            const sharedSecretBuffer = await crypto.subtle.exportKey("raw", sharedSecret);
+            const sharedSecretString = bufToHex(sharedSecretBuffer);
+            const sharedSecretString2 = await getMessageHashing(sharedSecretString);
+
+            const file = await this.#uploadCandidate.arrayBuffer();
+            const fileInfo = JSON.stringify({
+                name: this.#uploadCandidate.name,
+                type: this.#uploadCandidate.type,
+            });
+
+            const [encryptedFile, encryptedFileInfo] = await Promise.all([
+                encrypt(file, sharedSecretString, passStatus.roomSecret),
+                encrypt(getMessageEncoding(fileInfo), sharedSecretString2, passStatus.roomSecret)
+            ]);
+            this.#peerList[peerId].connection.send({
+                type: this.#TYPE_FILE_TRANSFER,
+                file: encryptedFile,
+                fileInfo: encryptedFileInfo
+            });
+        }
+    }
+
+    #sendPublicKey() {
+        crypto.subtle.exportKey("raw", this.#keyPair.publicKey).then((publicKeyBuffer) => {
+            this.#sendMessageToAll({
+                type: this.#TYPE_ASK_KEY,
+                keyString: bufToHex(publicKeyBuffer)
+            })
+        });
+    }
+
+    // Helper for data receiving 
+    #receiveFromPeer(peerId) { //TODO: bad name, change this in the future
+        const _conn = this.#peerList[peerId];
+        _conn.connection.on("data", async (data) => {
+            if (typeof data  === "string") {
+                console.log(`[peerjs] Received message: ${data}`);
+            } else if (typeof data  === "object") {
+                switch (data.type) {
+                    case this.#TYPE_FILE_TRANSFER: {
+                        // File decryption
+                        const sharedSecret = await getSecretKeyFromPair(this.#keyPair.privateKey, this.#peerList[peerId].secret);
+                        const sharedSecretBuffer = await crypto.subtle.exportKey("raw", sharedSecret);
+                        const sharedSecretString = bufToHex(sharedSecretBuffer);
+                        const sharedSecretString2 = await getMessageHashing(sharedSecretString);
+
+                        const [fileBuffer, fileInfoEncode] = await Promise.all([
+                            decrypt(data.file, sharedSecretString, passStatus.roomSecret),
+                            decrypt(data.fileInfo, sharedSecretString2, passStatus.roomSecret)
+                        ]);
+
+                        const fileInfo = JSON.parse(getMessageDecoding(fileInfoEncode));
+                        const file = new File([fileBuffer], fileInfo.name, {
+                            type: fileInfo.type,
+                        });
+
+                        // Download notification
+                        this.#modalPopUp.updateInfo({
+                            createContext: [{
+                                innerHTML: "<b>Do you want to download this file?</b>"
+                            },{
+                                innerHTML: this.#tool.createThumbnail(file)
+                            }],
+                            createButton: [{
+                                href: URL.createObjectURL(file),
+                                download: file.name,
+                                textContent: "Download",
+                                title: "Click to download: " + file.name
+                            },{
+                                innerText: "Cancel",
+                                title: "Cancel",
+                                onclick: () => {this.#modalPopUp.hideModal();}
+                            }]
+                        });
+
+                        // Download complete notification
+                        this.#sendMessageTo(peerId, {type: this.#TYPE_FILE_TRANSFER_COMPLETE});
+                        break;
+                    }
+                    case this.#TYPE_ASK_KEY: {
+                        console.log(`[peerjs] Received key from ${peerId}: data.keyString`);
+                        const peerPublicKey = await getPublicKeyFrom(hexToBuf(data.keyString));
+                        this.#peerList[peerId].secret = peerPublicKey;
+                        const publicKeyBuffer = await crypto.subtle.exportKey("raw", this.#keyPair.publicKey)
+                        this.#sendMessageTo(peerId, {
+                            type: this.#TYPE_REPLY_KEY,
+                            keyString: bufToHex(publicKeyBuffer)
+                        });
+                        break;
+                    }
+                    case this.#TYPE_REPLY_KEY: {
+                        const peerPublicKey = await getPublicKeyFrom(hexToBuf(data.keyString));
+                        this.#peerList[peerId].secret = peerPublicKey;
+
+                        this.#modalPopUp.updateInfo({
+                            createContext: [{
+                                innerHTML: "<b>Do you want to upload this file?</b>"
+                            },{
+                                innerHTML: this.#tool.createThumbnail(this.#uploadCandidate)
+                            }],
+                            createButton: [{
+                                innerText: "Confirm",
+                                title: "Click to upload: " + this.#uploadCandidate.name,
+                                onclick: () => {this.#sendFileToAll();}
+                            },{
+                                innerText: "Cancel",
+                                title: "Cancel",
+                                onclick: () => {this.#modalPopUp.hideModal();}
+                            }]
+                        });
+                        break;
+                    }
+                    case this.#TYPE_FILE_TRANSFER_INIT: {
+                        this.#modalPopUp.updateInfo({
+                            createContext: [{
+                                innerHTML: "<i class=\"fa-solid fa-spinner fa-spin-pulse\"></i> Loading ..."
+                            }]
+                        });
+                        break;
+                    }
+                    case this.#TYPE_FILE_TRANSFER_COMPLETE: {
+                        this.#modalPopUp.updateInfo({
+                            createContext: [{
+                                innerHTML: "<i class=\"fa-solid fa-circle-check\"></i> Upload complete!"
+                            }],
+                            createButton: [{
+                                innerText: "Confirm",
+                                title: "Confirm",
+                                onclick: () => {this.#modalPopUp.hideModal();}
+                            }]
+                        });
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    prepareUpload(file) {
+        this.#uploadCandidate = file;
+        this.#sendPublicKey();
+    }
+
+    //#receiveFromServer() {
+    //}
+
+    #updatePeerListStatus() {
+        switch (this.totalPeer) {
+            case 0:
+                this.textDisplay.textContent = this.isFirstPeer ?
+                    "Waiting for other peer(s) ..." :
+                    "No peer in the room! Refresh the page to start."
+                drop.disableDrop();
+                break;
+            case 1:
+                this.textDisplay.textContent = `${this.totalPeer} peer currently in the room`
+                if (this.isFirstPeer) {
+                    drop.enableDrop();
+                    this.isFirstPeer = false;
+                }
+                break;
+            default:
+                this.textDisplay.textContent = `${this.totalPeer} peers currently in the room`
+        }
     }
 }
+
+const connectionList = new ConnectionList();
+const pass = new Pass(connectionList);
+const drop = new Drop(connectionList);

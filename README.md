@@ -6,7 +6,7 @@
 
 # Agileshare
 
-[Agileshare](https://github.com/printfer/Agileshare) is a file-sharing program built with security in mind that is designed to improve the in-person cross-platform file-sharing experience.
+[Agileshare](https://github.com/printfer/agileshare) is a file-sharing program built with security in mind that is designed to improve the in-person cross-platform file-sharing experience.
 
 :warning: Warning! This program is still developing and contains experimental features. Use it at your own risk.
 
@@ -69,7 +69,7 @@ Please check [package.json](package.json) for more details
 
 # Contributing
 
-Bug reports, feature suggestions, and especially code contributions are most welcome. Feel free to open an issue or pull request, and please check out the [`develop`](https://github.com/printfer/Agileshare/tree/develop) branch to catch up with the latest development.
+Bug reports, feature suggestions, and especially code contributions are most welcome. Feel free to open an issue or pull request, and please check out the [`develop`](https://github.com/printfer/agileshare/tree/develop) branch to catch up with the latest development.
 
 # License
 
